@@ -8,6 +8,7 @@
 #include "../utils/args_utils.h"
 #include "../utils/command_utils.h"
 #include "../utils/user_input_output.h"
+#include "../utils/file_utils.h"
 
 void handleHello(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, char* mcast_addr);
 
@@ -56,6 +57,11 @@ int main(int argc, char *argv[]) {
     setMulticastEnabled(mcast_sock, &mcast_ip_mreq, MCAST_ADDR);
     bindToLocalAddress(NULL, mcast_sock, CMD_PORT);
 
+    char* all_files_list = getFiles(SHRD_FLDR);
+    //MAX_SPACE = MAX_SPACE - getFilesSize(SHRD_FLDR);
+
+    printf("%s\n", all_files_list);
+
     /* czytanie tego, co odebrano */
     for (;;) {
 
@@ -70,11 +76,11 @@ int main(int argc, char *argv[]) {
 
          switch (cmd) {
             case HELLO:
-                handleHello(simple_cmd->cmd_seq ,mcast_sock, &client_address, MCAST_ADDR);
+                handleHello(simple_cmd->cmd_seq, mcast_sock, &client_address, MCAST_ADDR);
                 free(simple_cmd);
                 break;
             case LIST:
-                printf("LIST\n");
+                //handleList();
                 break;
             case GET:
                 printf("GET\n");
@@ -83,7 +89,7 @@ int main(int argc, char *argv[]) {
                 printf("DEL\n");
                 break;
             default:
-                // Ignorujemy nieznaną komendę
+                printf("[PCKG ERROR] Skipping invalid package from {%s}:{%d}.", inet_ntoa(client_address.sin_addr), client_address.sin_port);
                 break;
         }
     }
@@ -96,4 +102,8 @@ void handleHello(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, cha
     struct CMPLX_CMD* cmd = goodDayCmd(cmd_seq, 0, mcast_addr);
     sendCmplxCmd(mcast_sock, cmd, addr);
     free(cmd);
+}
+
+void handleList(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr) {
+
 }

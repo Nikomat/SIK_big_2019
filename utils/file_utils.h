@@ -2,12 +2,10 @@
 // Created by nikodem on 31.07.19.
 //
 
-#ifndef CLIENT_FILE_UTILS_H
-#define CLIENT_FILE_UTILS_H
+#ifndef FILE_UTILS_H
+#define FILE_UTILS_H
+
+extern char* getFiles(char* dir_path);
 
 
-
-
-
-
-#endif //CLIENT_FILE_UTILS_H
+#endif //FILE_UTILS_H
