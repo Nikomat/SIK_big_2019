@@ -5,7 +5,38 @@
 #ifndef FILE_UTILS_H
 #define FILE_UTILS_H
 
-extern char* getFiles(char* dir_path);
+#include <netinet/in.h>
 
+struct FileNode {
+    struct FileNode* next;
+    int64_t size;
+    struct sockaddr_in host;
+    char filename[];
+};
+
+struct FileList {
+    struct FileNode* list;
+    int64_t size;
+};
+
+extern struct FileList initFileList();
+
+extern void addFile(struct FileList* list, char* filename, int64_t size, struct sockaddr_in* host);
+
+extern struct FileNode* findFile(struct FileList* list, char* filename);
+
+extern int removeFile(struct FileList* list, struct FileNode* node);
+
+extern void purgeFileList(struct FileList* list);
+
+extern void loadFilesFromDir(struct FileList* list, char* dir_path);
+
+extern int isFileListEmpty(struct FileList* list);
+
+extern char* castFileListToString(struct FileList* list, size_t max_size, char* substring);
+
+extern void castStringToFileList(struct FileList* list, char* files, struct sockaddr_in* server);
+
+extern void printFileList(struct FileList* list);
 
 #endif //FILE_UTILS_H

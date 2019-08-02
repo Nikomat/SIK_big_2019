@@ -21,7 +21,7 @@ CommandE getCommand(char* string) {
 
 struct SIMPL_CMD* createSimplCmd(const char cmd[10], uint64_t cmd_seq, char data[]) {
     size_t data_len = strlen(data) + 1; // + znak końca
-    size_t cmd_size = sizeof(struct SIMPL_CMD) + data_len * sizeof(char) - sizeof(char*);
+    size_t cmd_size = sizeof(struct SIMPL_CMD) + data_len * sizeof(char);
     struct SIMPL_CMD* simpl_cmd = (struct SIMPL_CMD*) malloc(cmd_size);
 
     if (!simpl_cmd) {
@@ -29,7 +29,7 @@ struct SIMPL_CMD* createSimplCmd(const char cmd[10], uint64_t cmd_seq, char data
     } else {
         memcpy(simpl_cmd->cmd, cmd, 10 * sizeof(char));
         simpl_cmd->cmd_seq = cmd_seq;
-        strcpy(simpl_cmd->data, data);
+        memcpy(simpl_cmd->data, data, data_len);
     }
     return simpl_cmd;
 }

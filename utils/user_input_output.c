@@ -6,11 +6,15 @@
 #include <string.h>
 #include <ctype.h>
 #include <zconf.h>
+#include <rpc/types.h>
+#include <arpa/inet.h>
 
 #include "user_input_output.h"
 #include "command_utils.h"
 
 int strncicmp(char const *a, char const *b, size_t __n);
+
+char* strTrim(char* str);
 
 struct UserInput getUserInput() {
     char *line_buf = NULL;
@@ -28,9 +32,7 @@ struct UserInput getUserInput() {
     for (int i = 0; i < ACTION_ENUM_SIZE; i++) {
         if (strncicmp(Action[i], line_buf, strlen(Action[i])) == 0 && isspace(line_buf[strlen(Action[i])])) {
             userInput.action = i;
-            if (line_size > strlen(Action[i]) + 1) {
-                userInput.arg = line_buf + strlen(Action[i]) + 1;
-            }
+            userInput.arg = strTrim(line_buf + strlen(Action[i]));
         }
     }
     return userInput;
@@ -45,15 +47,35 @@ int strncicmp(char const *a, char const *b, size_t __n) {
     return 0;
 }
 
+char* strTrim(char* str) {
+    size_t max_len = strlen(str);
+    size_t i = max_len - 1;
+    while (isspace(*(str + i)) && i>=0) {
+        *(str + i) = '\0';
+        i--;
+    }
+    max_len = strlen(str);
+    i = 0;
+    while (isspace(*str) && i < max_len) {
+        str++;
+        i++;
+    }
+    return str;
+}
+
+void printCmdError(struct sockaddr_in address) {
+    printf("[PCKG ERROR] Skipping invalid package from {%s}:{%d}.", inet_ntoa(address.sin_addr), address.sin_port);
+}
+
 void printSimplCmd(struct SIMPL_CMD* cmd) {
-    debugLog("SIMPLE COMMAND: \n");
+    debugLog("\tSIMPLE COMMAND: \n");
     debugLog("\t[cmd] = %.10s (%d)\n", cmd->cmd, getCommand(cmd->cmd));
     debugLog("\t[cmd_seq] = %lu\n", cmd->cmd_seq);
     debugLog("\t[data] = %s\n", cmd->data);
 }
 
 void printCmplxCmd(struct CMPLX_CMD* cmd) {
-    debugLog("COMPLEX COMMAND: \n");
+    debugLog("\tCOMPLEX COMMAND: \n");
     debugLog("\t[cmd] = %.10s (%d)\n", cmd->cmd, getCommand(cmd->cmd));
     debugLog("\t[cmd_seq] = %lu\n", cmd->cmd_seq);
     debugLog("\t[param] = %lu\n", cmd->param);

@@ -7,41 +7,174 @@
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
+#include <arpa/inet.h>
 #include "file_utils.h"
 #include "err.h"
 #include "user_input_output.h"
 
 
-char* getFiles(char* dir_path) {
+struct FileList initFileList() {
+    struct FileList list;
+    list.list = NULL;
+    list.size = 0;
+    return list;
+}
+
+void addFile(struct FileList* list, char* filename, int64_t size, struct sockaddr_in* host) {
+    size_t filename_len = strlen(filename);
+
+    struct FileNode* node = malloc(sizeof(struct FileNode) + sizeof(char) * (filename_len + 1));
+    node->size = size;
+    strcpy(node->filename, filename);
+    node->next = list->list;
+
+    if (host != NULL) {
+        node->host = *host;
+    }
+
+    list->size += size;
+    list->list = node;
+}
+
+struct FileNode* findFile(struct FileList* list, char* filename) {
+    struct FileNode* node_iter = list->list;
+    while (node_iter != NULL) {
+        if (strcmp(node_iter->filename, filename) == 0) {
+            return node_iter;
+        }
+        node_iter = node_iter->next;
+    }
+    return NULL;
+}
+
+int removeFile(struct FileList* list, struct FileNode* node) {
+    if (node == NULL) {
+        return 0;
+    }
+    struct FileNode* last_node = NULL;
+    struct FileNode* node_iter = list->list;
+
+    while (node_iter != NULL) {
+        if (node_iter == node) {
+            if (last_node == NULL) {
+                list->list = node_iter->next;
+            } else {
+                last_node->next = node_iter->next;
+            }
+
+            list->size -= node_iter->size;
+            free(node_iter);
+            return 1;
+        }
+
+        last_node = node_iter;
+        node_iter = node_iter->next;
+    }
+    return 0;
+}
+
+void __reqDelFile(struct FileNode* node) {
+    if (node == NULL) {
+        return;
+    }
+    __reqDelFile(node->next);
+    free(node);
+}
+
+void purgeFileList(struct FileList* list) {
+    __reqDelFile(list->list);
+    list->size = 0;
+    list->list = NULL;
+}
+
+void loadFilesFromDir(struct FileList* list, char* dir_path) {
+
     DIR *directory;
     struct dirent *node;
     directory = opendir(dir_path);
 
-    uint32_t message_len = 0;
-    char *message = malloc(0);
-
     if (directory) {
         while ((node = readdir(directory)) != NULL) {
             if (node->d_type == DT_REG) {
-                message = realloc(message, (strlen(node->d_name) + message_len + 1) * sizeof(char));
-                memcpy(message + message_len, node->d_name, strlen(node->d_name));
-                message_len += strlen(node->d_name) + 1;
-                message[message_len - 1] = '\n';
+
+                char* full_path = malloc((strlen(dir_path) + strlen(node->d_name) + 1) * sizeof(char));
+                strcpy(full_path, dir_path);
+                strcat(full_path, node->d_name);
+
+                struct stat info;
+                if (stat(full_path, &info) < 0) {
+                    syserr("read file: %s", full_path);
+                }
+
+                addFile(list, node->d_name, info.st_size, NULL);
             }
         }
-        message[message_len - 1] = '\0';
         closedir(directory);
     } else {
         fatal("given path to directory is incorrect");
     }
-    return message;
 }
 
+int isFileListEmpty(struct FileList* list) {
+    return list->list == NULL;
+}
 
-size_t getFilesSize(SHRD_FLDR) {
-    size_t directory_size;
-    struct stat st;
-   // if (stat(node->d_name, &st) == 0)
-    //    directory_size += st.st_size;
-    return 0;
+char* castFileListToString(struct FileList* list, size_t max_size, char* substring) {
+
+    struct FileNode* node_iter = list->list;
+    size_t str_len = 0;
+    char* files_str = NULL;
+
+    while (node_iter != NULL && str_len < max_size) {
+        if (substring == NULL || (*substring) == '\0' || strstr(node_iter->filename, substring) != NULL) {
+            size_t file_str_len = strlen(node_iter->filename) + 1;
+
+            if (str_len + file_str_len <= max_size) {
+                if (files_str == NULL) {
+                    files_str = malloc(0);
+                }
+                files_str = realloc(files_str, (file_str_len + str_len) * sizeof(char));
+                memcpy(files_str + str_len, node_iter->filename, strlen(node_iter->filename));
+                str_len += file_str_len;
+                files_str[str_len - 1] = '\n';
+            } else {
+
+            }
+        }
+
+        list->list = node_iter->next; // tworzymy iterację po liście
+        node_iter = node_iter->next;
+    }
+
+    if (files_str != NULL) {
+        files_str[str_len - 1] = '\0';
+    }
+
+    return files_str;
+}
+
+void castStringToFileList(struct FileList* list, char* files, struct sockaddr_in* server) {
+
+    while (files != NULL) {
+        char* temp_files = strstr(files, "\n");
+        if (temp_files != NULL) {
+            (*temp_files) = '\0';
+        }
+
+        size_t file_len = strlen(files);
+        if (file_len > 0) {
+            addFile(list, files, -1, server);
+        }
+
+        files = temp_files;
+        files = temp_files != NULL ? files + 1 : NULL;
+    }
+}
+
+void printFileList(struct FileList* list) {
+    struct FileNode* node_iter = list->list;
+    while (node_iter != NULL) {
+        printf("%s (%s)\n", node_iter->filename, inet_ntoa(node_iter->host.sin_addr));
+        node_iter = node_iter->next;
+    }
 }

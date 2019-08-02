@@ -11,6 +11,7 @@
 #include <sys/types.h>
 #include <sys/socket.h>
 #include <netdb.h>
+#include <errno.h>
 
 #include "connection_utils.h"
 #include "types.h"
@@ -144,15 +145,17 @@ void sendSimplCmd(int sock, struct SIMPL_CMD* cmd, struct sockaddr_in* addr) {
 
     cmd->cmd_seq = htobe64(cmd->cmd_seq);
 
+    size_t cmd_size = sizeof(struct SIMPL_CMD) + (strlen(cmd->data) + 1) * sizeof(char);
+
     if (addr == NULL) {
-        write(sock, (char *) cmd, sizeof(*cmd));
+        write(sock, (char *) cmd, cmd_size);
     } else {
         socklen_t snda_len = (socklen_t) sizeof(*addr);
 
         int flags = 0;
-        ssize_t snd_len = sendto(sock, (char *) cmd, (size_t) sizeof(*cmd), flags, (struct sockaddr *) addr, snda_len);
-        if (snd_len != sizeof(*cmd))
-            syserr("error on sending datagram to client socket");
+        ssize_t snd_len = sendto(sock, (char *) cmd, cmd_size, flags, (struct sockaddr *) addr, snda_len);
+        if (snd_len != cmd_size)
+            syserr("error on sending simpl cmd to client socket");
     }
 }
 
@@ -171,7 +174,7 @@ void sendCmplxCmd(int sock, struct CMPLX_CMD* cmd, struct sockaddr_in* addr) {
         int flags = 0;
         ssize_t snd_len = sendto(sock, (char *) cmd, cmd_size, flags, (struct sockaddr *) addr, snda_len);
         if (snd_len != cmd_size)
-            syserr("error on sending datagram to client socket");
+            syserr("error on sending cmplx cmd to client socket");
     }
 }
 
@@ -188,27 +191,27 @@ CommandE readCommand(int sock, struct sockaddr_in* sender_address, struct SIMPL_
     ssize_t len = recvfrom(sock, buffer, MAX_UDP_SIZE, flags,
                            (struct sockaddr *) sender_address, &rcva_len);
 
-
     if (len < 0) {
-        // Tymczasowo wyłączam, ponieważ timeout, kiedy zostanie przekroczony to wali błędami
-        // syserr("recvfrom");
-        return UNKNOWN_CMD;
+        //printf("%d\n", errno);
+        //syserr("recvfrom");
+        return NO_CMD;
     } else {
         CommandE cmd = getCommand(buffer);
         if (cmd != UNKNOWN_CMD) {
-            if(isComplex[cmd]) {
-                (*cmplx_cmd) = malloc((size_t) len);
+            if(isComplex[cmd] && len >= sizeof(struct CMPLX_CMD)) {
+                (*cmplx_cmd) = malloc((size_t) len /*+ 1*/);
                 memcpy(*cmplx_cmd, buffer, (size_t) len);
                 (*cmplx_cmd)->cmd_seq = be64toh((*cmplx_cmd)->cmd_seq);
                 (*cmplx_cmd)->param = be64toh((*cmplx_cmd)->param);
-            } else {
-                (*simpl_cmd) = malloc((size_t) len);
+                //*(((char*)cmplx_cmd) + len) = '\0'; // na wypadek gdyby, ktoś wysłał pole data bez kończącego \0
+            } else if (!isComplex[cmd] && len >= sizeof(struct SIMPL_CMD)){
+                (*simpl_cmd) = malloc((size_t) len /*+ 1*/);
                 memcpy(*simpl_cmd, buffer, (size_t) len);
                 (*simpl_cmd)->cmd_seq = be64toh((*simpl_cmd)->cmd_seq);
+                //*(((char*)simpl_cmd) + len) = '\0'; // strzeżonego pan Bóg strzeże, jak wyżej
+            } else { // Jeżeli dostaliśmy za mało bajtów
+                return UNKNOWN_CMD;
             }
-
-        } else {
-            // Ignorujemy, narazie...
         }
         return cmd;
     }

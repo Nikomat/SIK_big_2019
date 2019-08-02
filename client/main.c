@@ -15,8 +15,23 @@
 #include "../utils/args_utils.h"
 #include "../utils/user_input_output.h"
 #include "../utils/command_utils.h"
+#include "../utils/file_utils.h"
 
-void handleDiscover(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struct timeval timeout);
+
+struct ConnectionData {
+    uint64_t cmd_seq;
+    int mcast_sock;
+    struct sockaddr_in* addr;
+    struct timeval timeout;
+};
+
+void handleDiscover(struct ConnectionData* connection_data);
+
+void handleSearch(struct ConnectionData* connection_data, char* substring, struct FileList* list);
+
+void handleRemove(struct ConnectionData* connection_data, char* filename);
+
+void handleFetch(struct ConnectionData* connection_data, char* filename, struct FileList* list);
 
 int main(int argc, char *argv[]) {
     /*
@@ -64,6 +79,13 @@ int main(int argc, char *argv[]) {
 
     // ==== MAIN LOOP ==== //
 
+    struct FileList available_files = initFileList();
+    struct ConnectionData connection_data;
+
+    connection_data.mcast_sock = mcast_sock;
+    connection_data.timeout = TIMEOUT;
+    connection_data.addr = &mcast_sockadd_in;
+
     int stop = 0;
     uint64_t cmd_seq = 1;
 
@@ -71,19 +93,22 @@ int main(int argc, char *argv[]) {
         debugLog("CZEKAM NA KOMENDE:\n");
         struct UserInput input = getUserInput();
 
+        connection_data.cmd_seq = cmd_seq;
         switch (input.action) {
             case DISCOVER:
-                handleDiscover(cmd_seq, mcast_sock, &mcast_sockadd_in, TIMEOUT);
-                cmd_seq++;
+                handleDiscover(&connection_data);
                 break;
             case SEARCH:
-                sendSimplCmd(mcast_sock, listCmd(cmd_seq, ""), NULL);
+                handleSearch(&connection_data, input.arg, &available_files);
                 break;
             case FETCH:
-                printf("Fetch");
+                handleFetch(&connection_data, input.arg, &available_files);
                 break;
             case UPLOAD:
                 printf("Upload");
+                break;
+            case REMOVE:
+                handleRemove(&connection_data, input.arg);
                 break;
             case EXIT:
                 stop = 1;
@@ -93,17 +118,46 @@ int main(int argc, char *argv[]) {
                 break;
         }
 
+        cmd_seq++;
         free(input.full_command);
     }
 
+    if (!isFileListEmpty(&available_files)) {
+        purgeFileList(&available_files);
+    }
     close(mcast_sock);
     return 0;
 }
 
-void handleDiscover(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr,const struct timeval timeout) {
 
-    struct SIMPL_CMD* cmd = helloCmd(cmd_seq);
-    sendSimplCmd(mcast_sock, cmd, addr);
+void handleFetch(struct ConnectionData* connection_data, char* filename, struct FileList* list) {
+    struct FileNode* file = findFile(list, filename);
+
+    if (file) {
+        struct SIMPL_CMD *cmd = getCmd(connection_data->cmd_seq, filename);
+        sendSimplCmd(connection_data->mcast_sock, cmd, &(file->host));
+        free(cmd);
+    } else {
+        printf("File \"%s\" is not present in cached list of files. Please use: \"search [substring]\" first.\n", filename);
+    }
+}
+
+void handleRemove(struct ConnectionData* connection_data, char* filename) {
+    if (strlen(filename) > 0) {
+        struct SIMPL_CMD *cmd = delCmd(connection_data->cmd_seq, filename);
+        sendSimplCmd(connection_data->mcast_sock, cmd, connection_data->addr);
+        free(cmd);
+    }
+}
+
+void handleSearch(struct ConnectionData* connection_data, char* substring, struct FileList* list) {
+
+    if (!isFileListEmpty(list)) {
+        purgeFileList(list);
+    }
+
+    struct SIMPL_CMD* cmd = listCmd(connection_data->cmd_seq, substring);
+    sendSimplCmd(connection_data->mcast_sock, cmd, connection_data->addr);
     free(cmd);
 
     struct SIMPL_CMD* simpl_cmd;
@@ -113,29 +167,68 @@ void handleDiscover(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr,c
 
     struct timeval start_time, loop_time;
     struct timeval timeout_diff;
-    struct timeval timeout_left = timeout;
+    struct timeval timeout_left = connection_data->timeout;
 
     gettimeofday(&start_time, NULL);
 
     while (timeout_left.tv_sec > 0 || (timeout_left.tv_sec == 0 && timeout_left.tv_usec > 0)) {
-        setReceiveTimeout(mcast_sock, timeout_left);
-        CommandE e = readCommand(mcast_sock, &server_addr, &simpl_cmd, &cmplx_cmd);
+        setReceiveTimeout(connection_data->mcast_sock, timeout_left);
+        CommandE e = readCommand(connection_data->mcast_sock, &server_addr, &simpl_cmd, &cmplx_cmd);
 
-        if (e == GOOD_DAY && cmplx_cmd->cmd_seq == cmd_seq) {
-            printf("Found %s (%s) with free space %lu\n", inet_ntoa(server_addr.sin_addr), cmplx_cmd->data, cmplx_cmd->param);
-        }
-
-        if (e != UNKNOWN_CMD) {
-            debugLog("ODPOWIEDZ: {\n");
+        if (e == UNKNOWN_CMD) {
+            printCmdError(server_addr);
+        } else if (e != NO_CMD) {
             isComplex[e] ? printCmplxCmd(cmplx_cmd) : printSimplCmd(simpl_cmd);
-            debugLog("}\n");
 
+            if (e == MY_LIST && simpl_cmd->cmd_seq == connection_data->cmd_seq) {
+                castStringToFileList(list, simpl_cmd->data, &server_addr);
+                printFileList(list);
+            }
             free(isComplex[e] ? (void *) cmplx_cmd : (void *) simpl_cmd);
         }
 
         gettimeofday(&loop_time, NULL);
         timersub(&loop_time, &start_time, &timeout_diff);
-        timersub(&timeout, &timeout_diff, &timeout_left);
+        timersub(&(connection_data->timeout), &timeout_diff, &timeout_left);
     }
-    setReceiveTimeoutZero(mcast_sock);
+
+}
+
+void handleDiscover(struct ConnectionData* connection_data) {
+
+    struct SIMPL_CMD* cmd = helloCmd(connection_data->cmd_seq);
+    sendSimplCmd(connection_data->mcast_sock, cmd, connection_data->addr);
+    free(cmd);
+
+    struct SIMPL_CMD* simpl_cmd;
+    struct CMPLX_CMD* cmplx_cmd;
+
+    struct sockaddr_in server_addr;
+
+    struct timeval start_time, loop_time;
+    struct timeval timeout_diff;
+    struct timeval timeout_left = connection_data->timeout;
+
+    gettimeofday(&start_time, NULL);
+
+    while (timeout_left.tv_sec > 0 || (timeout_left.tv_sec == 0 && timeout_left.tv_usec > 0)) {
+        setReceiveTimeout(connection_data->mcast_sock, timeout_left);
+        CommandE e = readCommand(connection_data->mcast_sock, &server_addr, &simpl_cmd, &cmplx_cmd);
+
+        if (e == UNKNOWN_CMD) {
+            printCmdError(server_addr);
+        } else if (e != NO_CMD) {
+            isComplex[e] ? printCmplxCmd(cmplx_cmd) : printSimplCmd(simpl_cmd);
+
+            if (e == GOOD_DAY && cmplx_cmd->cmd_seq == connection_data->cmd_seq) {
+                printf("Found %s (%s) with free space %lu\n", inet_ntoa(server_addr.sin_addr), cmplx_cmd->data, cmplx_cmd->param);
+            }
+            free(isComplex[e] ? (void *) cmplx_cmd : (void *) simpl_cmd);
+        }
+
+        gettimeofday(&loop_time, NULL);
+        timersub(&loop_time, &start_time, &timeout_diff);
+        timersub(&connection_data->timeout, &timeout_diff, &timeout_left);
+    }
+    setReceiveTimeoutZero(connection_data->mcast_sock);
 }

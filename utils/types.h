@@ -22,7 +22,8 @@ typedef enum {
     CAN_ADD,
     LAST_ENTRY,
 
-    UNKNOWN_CMD
+    UNKNOWN_CMD,
+    NO_CMD
 } CommandE;
 
 const static char* Command[LAST_ENTRY] = {"HELLO", "GOOD_DAY", "LIST", "MY_LIST", "GET", "CONNECT_ME", "DEL", "ADD", "NO_WAY", "CAN_ADD"};

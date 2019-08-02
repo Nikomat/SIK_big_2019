@@ -2,6 +2,7 @@
 #include <zconf.h>
 #include <stdlib.h>
 #include <arpa/inet.h>
+#include <string.h>
 #include "../utils/err.h"
 #include "../utils/types.h"
 #include "../utils/connection_utils.h"
@@ -10,7 +11,13 @@
 #include "../utils/user_input_output.h"
 #include "../utils/file_utils.h"
 
-void handleHello(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, char* mcast_addr);
+void handleHello(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, char* mcast_addr, int64_t free_space);
+
+void handleList(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struct FileList* list, char* substring);
+
+void handleDel(struct FileList* list, char* filename, char* dir_path);
+
+void handleGet(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struct FileList* list, char* filename);
 
 int main(int argc, char *argv[]) {
     /*
@@ -32,14 +39,14 @@ int main(int argc, char *argv[]) {
     }
 
     in_port_t CMD_PORT = (in_port_t) atoi(CMD_PORT_STR);
-    int MAX_SPACE = 52428800; // 16-bitowych intów chyba już się nie spotyka
+    int64_t MAX_SPACE = 52428800;
     struct timeval TIMEOUT;
 
     TIMEOUT.tv_sec =  5;
     TIMEOUT.tv_usec = 0;
 
     if (MAX_SPACE_STR != NULL) {
-        MAX_SPACE = atoi(MAX_SPACE_STR);
+        MAX_SPACE = atol(MAX_SPACE_STR);
     }
 
     if (TIMEOUT_STR != NULL) {
@@ -57,10 +64,8 @@ int main(int argc, char *argv[]) {
     setMulticastEnabled(mcast_sock, &mcast_ip_mreq, MCAST_ADDR);
     bindToLocalAddress(NULL, mcast_sock, CMD_PORT);
 
-    char* all_files_list = getFiles(SHRD_FLDR);
-    //MAX_SPACE = MAX_SPACE - getFilesSize(SHRD_FLDR);
-
-    printf("%s\n", all_files_list);
+    struct FileList file_list = initFileList();
+    loadFilesFromDir(&file_list, SHRD_FLDR);
 
     /* czytanie tego, co odebrano */
     for (;;) {
@@ -76,34 +81,80 @@ int main(int argc, char *argv[]) {
 
          switch (cmd) {
             case HELLO:
-                handleHello(simple_cmd->cmd_seq, mcast_sock, &client_address, MCAST_ADDR);
+                handleHello(simple_cmd->cmd_seq, mcast_sock, &client_address, MCAST_ADDR, MAX_SPACE - file_list.size);
                 free(simple_cmd);
                 break;
             case LIST:
-                //handleList();
+                handleList(simple_cmd->cmd_seq, mcast_sock, &client_address, &file_list, simple_cmd->data);
+                free(simple_cmd);
                 break;
             case GET:
-                printf("GET\n");
+                handleGet(simple_cmd->cmd_seq, mcast_sock, &client_address, &file_list, simple_cmd->data);
+                free(simple_cmd);
                 break;
             case DEL:
-                printf("DEL\n");
+                handleDel(&file_list, simple_cmd->data, SHRD_FLDR);
+                free(simple_cmd);
+                break;
+             case ADD:
+                printf("ADD\n");
+                free(cmplx_cmd);
                 break;
             default:
-                printf("[PCKG ERROR] Skipping invalid package from {%s}:{%d}.", inet_ntoa(client_address.sin_addr), client_address.sin_port);
+                if (cmd != NO_CMD) {
+                    printCmdError(client_address);
+                    if (cmd != UNKNOWN_CMD) {
+                        free(isComplex[cmd] ? (void *) cmplx_cmd : (void *) simple_cmd);
+                    }
+                }
                 break;
         }
     }
 
+    purgeFileList(&file_list);
     //setMulticastDisabled(mcast_sock, &mcast_ip_mreq);
 
 }
 
-void handleHello(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, char* mcast_addr) {
-    struct CMPLX_CMD* cmd = goodDayCmd(cmd_seq, 0, mcast_addr);
+void handleGet(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struct FileList* list, char* filename) {
+    if (findFile(list, filename)) {
+
+
+
+
+
+    } else {
+        printCmdError(*addr);
+    }
+}
+
+void handleDel(struct FileList* list, char* filename, char* dir_path) {
+    char full_path[strlen(dir_path) + strlen(filename) + 1];
+    strcpy(full_path, dir_path);
+    strcat(full_path, filename);
+
+    if (remove(full_path) == 0) {
+        removeFile(list, findFile(list, filename));
+    }
+}
+
+void handleHello(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, char* mcast_addr, int64_t free_space) {
+    uint64_t real_free_space = free_space > 0 ? (uint64_t) free_space : 0;
+    struct CMPLX_CMD* cmd = goodDayCmd(cmd_seq, real_free_space, mcast_addr);
     sendCmplxCmd(mcast_sock, cmd, addr);
     free(cmd);
 }
 
-void handleList(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr) {
+void handleList(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struct FileList* list, char* substring) {
+    struct FileList list_iter = *list;
 
+    while (list_iter.list != NULL) {
+        char* files = castFileListToString(&list_iter, MAX_UDP_SIZE - sizeof(struct SIMPL_CMD), substring);
+        if (files != NULL) {
+            struct SIMPL_CMD *cmd = myListCmd(cmd_seq, files);
+            sendSimplCmd(mcast_sock, cmd, addr);
+            free(cmd);
+            free(files);
+        }
+    }
 }

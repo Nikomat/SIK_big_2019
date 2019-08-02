@@ -21,6 +21,7 @@ typedef enum {
     SEARCH,
     FETCH,
     UPLOAD,
+    REMOVE,
     EXIT,
     ACTION_ENUM_SIZE,
 
@@ -34,9 +35,11 @@ struct UserInput {
     char* arg;
 };
 
-const static char* Action[ACTION_ENUM_SIZE] = {"discover", "search", "fetch", "upload", "exit"};
+const static char* Action[ACTION_ENUM_SIZE] = {"discover", "search", "fetch", "upload", "remove", "exit"};
 
 extern struct UserInput getUserInput();
+
+extern void printCmdError(struct sockaddr_in address);
 
 extern void printSimplCmd(struct SIMPL_CMD* cmd);
 
