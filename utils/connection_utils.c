@@ -17,6 +17,7 @@
 #include "types.h"
 #include "err.h"
 #include "command_utils.h"
+#include "user_input_output.h"
 
 int openSocket(Protocol protocol) {
     int sock;
@@ -143,17 +144,23 @@ void setReceiveTimeoutZero(int sock) {
 
 void sendSimplCmd(int sock, struct SIMPL_CMD* cmd, struct sockaddr_in* addr) {
 
-    cmd->cmd_seq = htobe64(cmd->cmd_seq);
+    debugLog("WYSYŁAM: {\n");
+    printSimplCmd(cmd);
+    if (addr != NULL) debugLog("DO: %s:%d\n", inet_ntoa(addr->sin_addr), addr->sin_port);
+    debugLog("}\n");
 
+    cmd->cmd_seq = htobe64(cmd->cmd_seq);
     size_t cmd_size = sizeof(struct SIMPL_CMD) + (strlen(cmd->data) + 1) * sizeof(char);
 
-    if (addr == NULL) {
+    if (addr == NULL) { // DEPRECATED
         write(sock, (char *) cmd, cmd_size);
     } else {
+
         socklen_t snda_len = (socklen_t) sizeof(*addr);
 
         int flags = 0;
         ssize_t snd_len = sendto(sock, (char *) cmd, cmd_size, flags, (struct sockaddr *) addr, snda_len);
+        debugLog("WYSLANO: %ld BYTOW\n", snd_len);
         if (snd_len != cmd_size)
             syserr("error on sending simpl cmd to client socket");
     }
@@ -161,18 +168,25 @@ void sendSimplCmd(int sock, struct SIMPL_CMD* cmd, struct sockaddr_in* addr) {
 
 void sendCmplxCmd(int sock, struct CMPLX_CMD* cmd, struct sockaddr_in* addr) {
 
+    debugLog("WYSYŁAM: {\n");
+    printCmplxCmd(cmd);
+    if (addr != NULL) debugLog("DO: %s:%d\n", inet_ntoa(addr->sin_addr), addr->sin_port);
+    debugLog("}\n");
+
     cmd->cmd_seq = htobe64(cmd->cmd_seq);
     cmd->param = htobe64(cmd->param);
-
     size_t cmd_size = sizeof(struct CMPLX_CMD) + (strlen(cmd->data) + 1) * sizeof(char);
 
-    if (addr == NULL) {
+    if (addr == NULL) { // DEPRECATED
         write(sock, (char *) cmd, cmd_size);
     } else {
+
+
         socklen_t snda_len = (socklen_t) sizeof(*addr);
 
         int flags = 0;
         ssize_t snd_len = sendto(sock, (char *) cmd, cmd_size, flags, (struct sockaddr *) addr, snda_len);
+        debugLog("WYSLANO: %ld BYTOW\n", snd_len);
         if (snd_len != cmd_size)
             syserr("error on sending cmplx cmd to client socket");
     }
