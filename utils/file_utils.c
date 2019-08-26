@@ -3,11 +3,11 @@
 //
 
 #include <dirent.h>
-#include <z3.h>
 #include <stdlib.h>
 #include <string.h>
 #include <sys/stat.h>
 #include <arpa/inet.h>
+#include <stdio.h>
 #include "file_utils.h"
 #include "err.h"
 #include "user_input_output.h"
