@@ -17,7 +17,7 @@ void handleList(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, stru
 
 void handleDel(struct FileList* list, char* filename, char* dir_path);
 
-void handleGet(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struct FileList* list, char* filename);
+void handleGet(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struct FileList* list, char* filename, char* filepath, struct timeval timeout);
 
 int main(int argc, char *argv[]) {
     /*
@@ -31,12 +31,16 @@ int main(int argc, char *argv[]) {
     char* MCAST_ADDR = findArg("-g", argc, argv);
     char* CMD_PORT_STR = findArg("-p", argc, argv);
     char* MAX_SPACE_STR = findArg("-b", argc, argv);
-    char* SHRD_FLDR = findArg("-f", argc, argv);
+    char* TMP_SHRD_FLDR = findArg("-f", argc, argv);
     char* TIMEOUT_STR = findArg("-t", argc, argv);
 
-    if (MCAST_ADDR == NULL || CMD_PORT_STR == NULL || SHRD_FLDR == NULL) {
+    if (MCAST_ADDR == NULL || CMD_PORT_STR == NULL || TMP_SHRD_FLDR == NULL) {
         fatal("Usage: %s -g MCAST_ADDR -p CMD_PORT [-b MAX_SPACE] -f SHRD_FLDR [-t TIMEOUT] \n", argv[0]);
     }
+
+    char SHRD_FLDR[strlen(TMP_SHRD_FLDR) + 2];
+    strcpy(SHRD_FLDR, TMP_SHRD_FLDR);
+    strcat(SHRD_FLDR, "/"); // na wypadek gdy scieżka do katalogu nie zawiera '/'
 
     in_port_t CMD_PORT = (in_port_t) atoi(CMD_PORT_STR);
     int64_t MAX_SPACE = 52428800;
@@ -89,7 +93,7 @@ int main(int argc, char *argv[]) {
                 free(simple_cmd);
                 break;
             case GET:
-                handleGet(simple_cmd->cmd_seq, mcast_sock, &client_address, &file_list, simple_cmd->data);
+                handleGet(simple_cmd->cmd_seq, mcast_sock, &client_address, &file_list, simple_cmd->data, SHRD_FLDR, TIMEOUT);
                 free(simple_cmd);
                 break;
             case DEL:
@@ -116,12 +120,54 @@ int main(int argc, char *argv[]) {
 
 }
 
-void handleGet(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struct FileList* list, char* filename) {
+int initFileListen(struct timeval timeout) {
+    int tcp_sock = openSocket(TCP);
+    bindToLocalAddress(NULL, tcp_sock, 0);
+    setPassiveOpenForTcp(tcp_sock);
+    setReceiveTimeout(tcp_sock, timeout);
+    return tcp_sock;
+}
+
+void handleGet(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struct FileList* list, char* filename, char* filepath, struct timeval timeout) {
     if (findFile(list, filename)) {
 
+        if (fork() == 0) { // Proces potomny
 
+            debugLog("[TCP] ROZPOCZYNAM PROCES POTOMNY:\n");
 
+            int tcp_sock = initFileListen(timeout);
+            struct sockaddr_in local_address = getSockDetails(tcp_sock);
 
+            struct CMPLX_CMD* cmd = connectMeCmd(cmd_seq, (uint64_t) local_address.sin_port, filename);
+            sendCmplxCmd(mcast_sock, cmd, addr);
+            free(cmd);
+
+            debugLog("[TCP] OCZEKUJE NA POLACZENIE OD KLIENTA NA PORCIE: %d\n", local_address.sin_port);
+
+            struct sockaddr_in client_address;
+            socklen_t client_address_len = sizeof(client_address);
+            int con_fd = accept(tcp_sock, (struct sockaddr *) &client_address, &client_address_len);
+
+            if (con_fd < 0) {
+                debugLog("[TCP] NIE UDAŁO SIĘ NAWIĄZAĆ POŁĄCZENIA Z KLIENTEM.\n");
+            } else {
+                debugLog("[TCP] UDAŁO SIĘ NAWIĄZAĆ POŁĄCZENIE.\n");
+                debugLog("[TCP] ROZPOCZYNAM WYSYŁANIE PLIKU.\n");
+
+                sendFile(con_fd, filepath, filename);
+
+                debugLog("[TCP] WYSYŁANIE ZAKOŃCZONE, KOŃCZĘ POŁĄCZENIE.\n");
+
+                if (close(con_fd) < 0)
+                    syserr("close");
+            }
+
+            debugLog("[TCP] KOŃCZE PROCES POTOMNY.\n");
+
+            if (close(tcp_sock) < 0)
+                syserr("close");
+            exit(0);
+        }
 
     } else {
         printCmdError(*addr);

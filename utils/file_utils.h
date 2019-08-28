@@ -7,6 +7,9 @@
 
 #include <netinet/in.h>
 
+// Wielkość fragmentu pliku, który jesteśmy gotowi załadować do pamięci
+#define FILE_PART_SIZE 5
+
 struct FileNode {
     struct FileNode* next;
     int64_t size;
@@ -38,5 +41,7 @@ extern char* castFileListToString(struct FileList* list, size_t max_size, char* 
 extern void castStringToFileList(struct FileList* list, char* files, struct sockaddr_in* server);
 
 extern void printFileList(struct FileList* list);
+
+extern FILE* getFile(char* filepath, char* filename, char* mode);
 
 #endif //FILE_UTILS_H

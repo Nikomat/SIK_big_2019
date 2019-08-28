@@ -8,6 +8,7 @@
 #include <sys/stat.h>
 #include <arpa/inet.h>
 #include <stdio.h>
+#include <zconf.h>
 #include "file_utils.h"
 #include "err.h"
 #include "user_input_output.h"
@@ -177,4 +178,16 @@ void printFileList(struct FileList* list) {
         printf("%s (%s)\n", node_iter->filename, inet_ntoa(node_iter->host.sin_addr));
         node_iter = node_iter->next;
     }
+}
+
+FILE* getFile(char* filepath, char* filename, char* mode) {
+    char fullpath[strlen(filename) + strlen(filepath) + 1];
+    strcpy(fullpath, filepath);
+    strcat(fullpath, filename);
+
+    FILE* file = fopen(fullpath, mode);
+    if (file == NULL) {
+        syserr("fopen");
+    }
+    return file;
 }

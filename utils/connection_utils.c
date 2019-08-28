@@ -18,6 +18,9 @@
 #include "err.h"
 #include "command_utils.h"
 #include "user_input_output.h"
+#include "file_utils.h"
+
+#define MAX_TCP_LISTEN_QUEUE_LEN 1
 
 int openSocket(Protocol protocol) {
     int sock;
@@ -73,6 +76,20 @@ void bindToLocalAddress(struct sockaddr_in* local_address, int sock, in_port_t p
     local_address->sin_addr.s_addr = htonl(INADDR_ANY);
     local_address->sin_port = htons(port);
     bindToAddress(sock, *local_address);
+}
+
+void setPassiveOpenForTcp(int sock) {
+    if (listen(sock, MAX_TCP_LISTEN_QUEUE_LEN) < 0)
+        syserr("listen");
+}
+
+struct sockaddr_in getSockDetails(int sock) {
+    struct sockaddr_in addr;
+    socklen_t len_inet = (socklen_t) sizeof(addr);
+    if (getsockname(sock, (struct sockaddr *)&addr, &len_inet) < 0){
+        syserr("getsockname");
+    }
+    return addr;
 }
 
 struct addrinfo* getAddress(struct sockaddr_in* address, char host[], char port[], Protocol protocol) {
@@ -231,3 +248,26 @@ CommandE readCommand(int sock, struct sockaddr_in* sender_address, struct SIMPL_
     }
 }
 
+void sendFile(int socket, char* path, char* filename) {
+    FILE* file = getFile(path, filename, "r");
+    char buffer[FILE_PART_SIZE];
+    size_t len;
+    while (0 < (len = fread(buffer, sizeof(char), FILE_PART_SIZE, file))) {
+        ssize_t snd_len = write(socket, buffer, len);
+        if (snd_len != len) {
+            syserr("writing to client socket");
+        }
+    }
+    fclose(file);
+}
+
+void receiveFile(int socket, char* path, char* filename) {
+    FILE* file = getFile(path, filename, "w");
+    char buffer[FILE_PART_SIZE];
+
+    ssize_t len = 0;
+    while (0 < (len = read(socket, buffer, FILE_PART_SIZE))) {
+        fwrite(buffer, sizeof(char), (size_t) len, file);
+    }
+    fclose(file);
+}

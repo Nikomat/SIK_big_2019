@@ -27,8 +27,13 @@ extern void bindToAddress(int sock, struct sockaddr_in address);
 /* podpięcie się pod lokalny adres i port socket'u */
 extern void bindToLocalAddress(struct sockaddr_in* local_address, int sock, in_port_t port);
 
+/* przejście w pasywne oczekiwanie na połączenia */
+extern void setPassiveOpenForTcp(int sock);
+
 /* połącznie socketu z adresem, w domyśle z zamiarem pisania */
 extern void connectToAddress(int sock, struct sockaddr_in address);
+
+extern struct sockaddr_in getSockDetails(int sock);
 
 extern struct addrinfo* getAddress(struct sockaddr_in* address, char host[], char port[], Protocol protocol);
 
@@ -47,5 +52,9 @@ extern void sendCmplxCmd(int sock, struct CMPLX_CMD* cmd, struct sockaddr_in* ad
 extern CommandE readCommand(int sock, struct sockaddr_in* sender_address, struct SIMPL_CMD** simpl_cmd, struct CMPLX_CMD** cmplx_cmd);
 
 extern void setReceiveTimeoutZero(int sock);
+
+extern void sendFile(int socket, char* path, char* filename);
+
+extern void receiveFile(int socket, char* path, char* filename);
 
 #endif //CONNECTION_UTILS_H

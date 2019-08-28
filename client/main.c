@@ -31,7 +31,7 @@ void handleSearch(struct ConnectionData* connection_data, char* substring, struc
 
 void handleRemove(struct ConnectionData* connection_data, char* filename);
 
-void handleFetch(struct ConnectionData* connection_data, char* filename, struct FileList* list);
+void handleFetch(struct ConnectionData* connection_data, char* filepath, char* filename, struct FileList* list);
 
 int main(int argc, char *argv[]) {
     /*
@@ -43,12 +43,16 @@ int main(int argc, char *argv[]) {
 
     char* MCAST_ADDR = findArg("-g", argc, argv);
     char* CMD_PORT_STR = findArg("-p", argc, argv);
-    char* OUT_FLDR = findArg("-o", argc, argv);
+    char* TMP_OUT_FLDR = findArg("-o", argc, argv);
     char* TIMEOUT_STR = findArg("-t", argc, argv);
 
-    if (MCAST_ADDR == NULL || CMD_PORT_STR == NULL || OUT_FLDR == NULL) {
+    if (MCAST_ADDR == NULL || CMD_PORT_STR == NULL || TMP_OUT_FLDR == NULL) {
         fatal("Usage: %s -g MCAST_ADDR -p CMD_PORT -o OUT_FLDR [-t TIMEOUT] \n", argv[0]);
     }
+
+    char OUT_FLDR[strlen(TMP_OUT_FLDR) + 2];
+    strcpy(OUT_FLDR, TMP_OUT_FLDR);
+    strcat(OUT_FLDR, "/"); // na wypadek gdy scieżka do katalogu nie zawiera '/'
 
     in_port_t CMD_PORT = (in_port_t) atoi(CMD_PORT_STR);
     int MAX_SPACE = 52428800; // 16-bitowych intów chyba już się nie spotyka
@@ -102,7 +106,7 @@ int main(int argc, char *argv[]) {
                 handleSearch(&connection_data, input.arg, &available_files);
                 break;
             case FETCH:
-                handleFetch(&connection_data, input.arg, &available_files);
+                handleFetch(&connection_data, OUT_FLDR, input.arg, &available_files);
                 break;
             case UPLOAD:
                 printf("Upload");
@@ -129,14 +133,64 @@ int main(int argc, char *argv[]) {
     return 0;
 }
 
+void executeFileTransfer(struct sockaddr_in server_addr, struct CMPLX_CMD* cmplx_cmd, char* filepath) {
+    int tcp_sock = openSocket(TCP);
 
-void handleFetch(struct ConnectionData* connection_data, char* filename, struct FileList* list) {
+    server_addr.sin_port = (in_port_t) cmplx_cmd->param;
+    connectToAddress(tcp_sock, server_addr);
+    receiveFile(tcp_sock, filepath, cmplx_cmd->data);
+
+    printf("File %s downloaded (%s:%lu)\n", cmplx_cmd->data, inet_ntoa(server_addr.sin_addr), cmplx_cmd->param);
+
+    close(tcp_sock);
+}
+
+void handleFetch(struct ConnectionData* connection_data, char* filepath, char* filename, struct FileList* list) {
     struct FileNode* file = findFile(list, filename);
 
     if (file) {
         struct SIMPL_CMD *cmd = getCmd(connection_data->cmd_seq, filename);
         sendSimplCmd(connection_data->mcast_sock, cmd, &(file->host));
         free(cmd);
+
+        struct SIMPL_CMD* simpl_cmd;
+        struct CMPLX_CMD* cmplx_cmd;
+
+        struct sockaddr_in server_addr;
+
+        struct timeval start_time, loop_time;
+        struct timeval timeout_diff;
+        struct timeval timeout_left = connection_data->timeout;
+
+        gettimeofday(&start_time, NULL);
+
+        while (timeout_left.tv_sec > 0 || (timeout_left.tv_sec == 0 && timeout_left.tv_usec > 0)) {
+            setReceiveTimeout(connection_data->mcast_sock, timeout_left);
+            CommandE e = readCommand(connection_data->mcast_sock, &server_addr, &simpl_cmd, &cmplx_cmd);
+
+            if (e == UNKNOWN_CMD) {
+                printCmdError(server_addr);
+            } else if (e != NO_CMD) {
+                isComplex[e] ? printCmplxCmd(cmplx_cmd) : printSimplCmd(simpl_cmd);
+
+                if (e == CONNECT_ME && cmplx_cmd->cmd_seq == connection_data->cmd_seq) {
+                    if (fork() == 0) {
+                        executeFileTransfer(server_addr, cmplx_cmd, filepath);
+                        exit(1);
+                    } else {
+                        free(isComplex[e] ? (void *) cmplx_cmd : (void *) simpl_cmd);
+                        break;
+                    }
+                }
+                free(isComplex[e] ? (void *) cmplx_cmd : (void *) simpl_cmd);
+            }
+
+            gettimeofday(&loop_time, NULL);
+            timersub(&loop_time, &start_time, &timeout_diff);
+            timersub(&connection_data->timeout, &timeout_diff, &timeout_left);
+        }
+        setReceiveTimeoutZero(connection_data->mcast_sock);
+
     } else {
         printf("File \"%s\" is not present in cached list of files. Please use: \"search [substring]\" first.\n", filename);
     }
@@ -181,6 +235,9 @@ void handleSearch(struct ConnectionData* connection_data, char* substring, struc
             isComplex[e] ? printCmplxCmd(cmplx_cmd) : printSimplCmd(simpl_cmd);
 
             if (e == MY_LIST && simpl_cmd->cmd_seq == connection_data->cmd_seq) {
+                if (!isFileListEmpty(list)) {
+                    purgeFileList(list);
+                }
                 castStringToFileList(list, simpl_cmd->data, &server_addr);
                 printFileList(list);
             }
