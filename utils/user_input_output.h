@@ -39,7 +39,7 @@ const static char* Action[ACTION_ENUM_SIZE] = {"discover", "search", "fetch", "u
 
 extern struct UserInput getUserInput();
 
-extern void printCmdError(struct sockaddr_in address);
+extern void printCmdError(struct sockaddr_in address, const char *__restrict __format, ...);
 
 extern void printSimplCmd(struct SIMPL_CMD* cmd);
 

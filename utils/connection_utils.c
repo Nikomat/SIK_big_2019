@@ -61,9 +61,12 @@ void bindToAddress(int sock, struct sockaddr_in address) {
         syserr("bind");
 }
 
-void connectToAddress(int sock, struct sockaddr_in address) {
-    if (connect(sock, (struct sockaddr *)&address, sizeof address) < 0)
-        syserr("connect");
+int connectToAddress(int sock, struct sockaddr_in address) {
+    if (connect(sock, (struct sockaddr *)&address, sizeof address) < 0) {
+        return 0;
+    } else {
+        return 1;
+    }
 }
 
 void bindToLocalAddress(struct sockaddr_in* local_address, int sock, in_port_t port) {
@@ -234,12 +237,12 @@ CommandE readCommand(int sock, struct sockaddr_in* sender_address, struct SIMPL_
                 memcpy(*cmplx_cmd, buffer, (size_t) len);
                 (*cmplx_cmd)->cmd_seq = be64toh((*cmplx_cmd)->cmd_seq);
                 (*cmplx_cmd)->param = be64toh((*cmplx_cmd)->param);
-                //*(((char*)cmplx_cmd) + len) = '\0'; // na wypadek gdyby, ktoś wysłał pole data bez kończącego \0
+                //*(((char*)cmplx_cmd) + len) = '\0';
             } else if (!isComplex[cmd] && len >= sizeof(struct SIMPL_CMD)){
                 (*simpl_cmd) = malloc((size_t) len /*+ 1*/);
                 memcpy(*simpl_cmd, buffer, (size_t) len);
                 (*simpl_cmd)->cmd_seq = be64toh((*simpl_cmd)->cmd_seq);
-                //*(((char*)simpl_cmd) + len) = '\0'; // strzeżonego pan Bóg strzeże, jak wyżej
+                //*(((char*)simpl_cmd) + len) = '\0';
             } else { // Jeżeli dostaliśmy za mało bajtów
                 return UNKNOWN_CMD;
             }
@@ -248,21 +251,26 @@ CommandE readCommand(int sock, struct sockaddr_in* sender_address, struct SIMPL_
     }
 }
 
-void sendFile(int socket, char* path, char* filename) {
+int sendFile(int socket, char* path, char* filename) {
     FILE* file = getFile(path, filename, "r");
     char buffer[FILE_PART_SIZE];
     size_t len;
     while (0 < (len = fread(buffer, sizeof(char), FILE_PART_SIZE, file))) {
         ssize_t snd_len = write(socket, buffer, len);
         if (snd_len != len) {
-            syserr("writing to client socket");
+            return 0;
         }
     }
     fclose(file);
+    return 1;
 }
 
-void receiveFile(int socket, char* path, char* filename) {
+int receiveFile(int socket, char* path, char* filename) {
     FILE* file = getFile(path, filename, "w");
+    if (file == NULL) {
+        return 0;
+    }
+
     char buffer[FILE_PART_SIZE];
 
     ssize_t len = 0;
@@ -270,4 +278,10 @@ void receiveFile(int socket, char* path, char* filename) {
         fwrite(buffer, sizeof(char), (size_t) len, file);
     }
     fclose(file);
+
+    if (len == -1) {
+        return 0;
+    } else {
+        return 1;
+    }
 }

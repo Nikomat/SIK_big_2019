@@ -19,6 +19,8 @@ void handleDel(struct FileList* list, char* filename, char* dir_path);
 
 void handleGet(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struct FileList* list, char* filename, char* filepath, struct timeval timeout);
 
+void handleAdd(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struct FileList* list, char* filename, uint64_t file_size, char* filepath, struct timeval timeout, int64_t max_size);
+
 int main(int argc, char *argv[]) {
     /*
      * MCAST_ADDR – adres rozgłaszania ukierunkowanego, ustawiany obowiązkowym parametrem -g węzła serwerowego;
@@ -101,12 +103,12 @@ int main(int argc, char *argv[]) {
                 free(simple_cmd);
                 break;
              case ADD:
-                printf("ADD\n");
+                handleAdd(cmplx_cmd->cmd_seq, mcast_sock, &client_address, &file_list, cmplx_cmd->data, cmplx_cmd->param, SHRD_FLDR, TIMEOUT, MAX_SPACE);
                 free(cmplx_cmd);
                 break;
             default:
                 if (cmd != NO_CMD) {
-                    printCmdError(client_address);
+                    printCmdError(client_address, "Got unknown command");
                     if (cmd != UNKNOWN_CMD) {
                         free(isComplex[cmd] ? (void *) cmplx_cmd : (void *) simple_cmd);
                     }
@@ -126,6 +128,71 @@ int initFileListen(struct timeval timeout) {
     setPassiveOpenForTcp(tcp_sock);
     setReceiveTimeout(tcp_sock, timeout);
     return tcp_sock;
+}
+
+int isFileGood(char* filename, uint64_t size, struct FileList* files, int64_t max_space) {
+    if (size > (max_space-files->size)) {
+        return 0;
+    }
+    if (strlen(filename) <= 0) {
+        return 0;
+    }
+    if (strchr(filename, '/')) {
+        return 0;
+    }
+    if (findFile(files, filename)) {
+        return 0;
+    }
+    return 1;
+}
+
+void handleAdd(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struct FileList* list, char* filename, uint64_t file_size, char* filepath, struct timeval timeout, int64_t max_size) {
+    if (isFileGood(filename, file_size, list, max_size)) {
+        addFile(list, filename, file_size, NULL);
+
+        if (fork() == 0) { // Proces potomny
+
+            debugLog("[TCP] ROZPOCZYNAM PROCES POTOMNY:\n");
+
+            int tcp_sock = initFileListen(timeout);
+            struct sockaddr_in local_address = getSockDetails(tcp_sock);
+
+            struct CMPLX_CMD* cmd = canAddCmd(cmd_seq, (uint64_t) local_address.sin_port, filename);
+            sendCmplxCmd(mcast_sock, cmd, addr);
+            free(cmd);
+
+            debugLog("[TCP] OCZEKUJE NA POLACZENIE OD KLIENTA NA PORCIE: %d\n", local_address.sin_port);
+
+            struct sockaddr_in client_address;
+            socklen_t client_address_len = sizeof(client_address);
+            int con_fd = accept(tcp_sock, (struct sockaddr *) &client_address, &client_address_len);
+
+            if (con_fd < 0) {
+                debugLog("[TCP] NIE UDAŁO SIĘ NAWIĄZAĆ POŁĄCZENIA Z KLIENTEM.\n");
+            } else {
+                debugLog("[TCP] UDAŁO SIĘ NAWIĄZAĆ POŁĄCZENIE.\n");
+                debugLog("[TCP] OCZEKUJE NA POBRANIE PLIKU.\n");
+
+                receiveFile(con_fd, filepath, filename);
+
+                debugLog("[TCP] POBIERANIE ZAKOŃCZONE, KOŃCZĘ POŁĄCZENIE.\n");
+
+                if (close(con_fd) < 0)
+                    syserr("close");
+            }
+
+            debugLog("[TCP] KOŃCZE PROCES POTOMNY.\n");
+
+            if (close(tcp_sock) < 0)
+                syserr("close");
+            exit(0);
+        }
+
+    } else {
+        struct SIMPL_CMD* cmd = noWayCmd(cmd_seq, filename);
+        sendSimplCmd(mcast_sock, cmd, addr);
+        free(cmd);
+    }
 }
 
 void handleGet(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struct FileList* list, char* filename, char* filepath, struct timeval timeout) {
@@ -170,7 +237,7 @@ void handleGet(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struc
         }
 
     } else {
-        printCmdError(*addr);
+        printCmdError(*addr, "Client requested file: %s", filename);
     }
 }
 

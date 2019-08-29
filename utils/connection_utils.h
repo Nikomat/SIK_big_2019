@@ -31,7 +31,7 @@ extern void bindToLocalAddress(struct sockaddr_in* local_address, int sock, in_p
 extern void setPassiveOpenForTcp(int sock);
 
 /* połącznie socketu z adresem, w domyśle z zamiarem pisania */
-extern void connectToAddress(int sock, struct sockaddr_in address);
+extern int connectToAddress(int sock, struct sockaddr_in address);
 
 extern struct sockaddr_in getSockDetails(int sock);
 
@@ -53,8 +53,8 @@ extern CommandE readCommand(int sock, struct sockaddr_in* sender_address, struct
 
 extern void setReceiveTimeoutZero(int sock);
 
-extern void sendFile(int socket, char* path, char* filename);
+extern int sendFile(int socket, char* path, char* filename);
 
-extern void receiveFile(int socket, char* path, char* filename);
+extern int receiveFile(int socket, char* path, char* filename);
 
 #endif //CONNECTION_UTILS_H

@@ -44,4 +44,8 @@ extern void printFileList(struct FileList* list);
 
 extern FILE* getFile(char* filepath, char* filename, char* mode);
 
+extern int isFile(const char *path);
+
+extern char* getFileNameFromPath(char* filepath);
+
 #endif //FILE_UTILS_H

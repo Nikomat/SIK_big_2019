@@ -82,3 +82,11 @@ struct SIMPL_CMD* myListCmd(uint64_t cmd_seq, char file_list[]) {
 struct CMPLX_CMD* connectMeCmd(uint64_t cmd_seq, uint64_t tcp_port, char filename[]) {
     return createCmplxCmd(Command[CONNECT_ME], cmd_seq, tcp_port, filename);
 }
+
+struct SIMPL_CMD* noWayCmd(uint64_t cmd_seq, char filename[]) {
+    return createSimplCmd(Command[NO_WAY], cmd_seq, filename);
+}
+
+struct CMPLX_CMD* canAddCmd(uint64_t cmd_seq, uint64_t tcp_port, char filename[]) {
+    return createCmplxCmd(Command[CAN_ADD], cmd_seq, tcp_port, filename);
+}

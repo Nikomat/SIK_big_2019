@@ -33,4 +33,8 @@ extern struct SIMPL_CMD* myListCmd(uint64_t cmd_seq, char file_list[]);
 
 extern struct CMPLX_CMD* connectMeCmd(uint64_t cmd_seq, uint64_t tcp_port, char filename[]);
 
+extern struct SIMPL_CMD* noWayCmd(uint64_t cmd_seq, char filename[]);
+
+extern struct CMPLX_CMD* canAddCmd(uint64_t cmd_seq, uint64_t tcp_port, char filename[]);
+
 #endif //COMMAND_UTILS_H

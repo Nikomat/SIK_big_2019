@@ -191,3 +191,16 @@ FILE* getFile(char* filepath, char* filename, char* mode) {
     }
     return file;
 }
+
+int isFile(const char *path) {
+    struct stat statbuf;
+    if (stat(path, &statbuf) != 0)
+        return 0;
+    return S_ISREG(statbuf.st_mode);
+}
+
+char* getFileNameFromPath(char* filepath) {
+    char* whoami;
+    (whoami = strrchr(filepath, '/')) ? ++whoami : (whoami = filepath);
+    return whoami;
+}
