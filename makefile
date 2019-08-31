@@ -1,5 +1,5 @@
 CC = gcc
-CFLAGS = -Wall
+CFLAGS = -Wall -Wextra -O2
 TARGETS = netstore-client netstore-server
 
 all: $(TARGETS)
@@ -24,7 +24,7 @@ user_input_output.o: utils/user_input_output.c utils/args_utils.h utils/command_
 
 
 
-serwer.o: server/main.c utils/args_utils.h utils/command_utils.h utils/connection_utils.h utils/err.h utils/file_utils.h utils/types.h utils/user_input_output.h
+server.o: server/main.c utils/args_utils.h utils/command_utils.h utils/connection_utils.h utils/err.h utils/file_utils.h utils/types.h utils/user_input_output.h
 	$(CC) -c $(LFLAGS) server/main.c -o server.o
 
 client.o: client/main.c utils/args_utils.h utils/command_utils.h utils/connection_utils.h utils/err.h utils/file_utils.h utils/types.h utils/user_input_output.h
