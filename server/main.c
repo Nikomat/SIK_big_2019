@@ -81,7 +81,7 @@ int main(int argc, char *argv[]) {
         struct SIMPL_CMD* simple_cmd;
         struct CMPLX_CMD* cmplx_cmd;
 
-        debugLog("OCZEKUJE NA KOMENDE...");
+        debugLog("OCZEKUJE NA KOMENDE...\n");
         CommandE cmd = readCommand(mcast_sock, &client_address, &simple_cmd, &cmplx_cmd);
 
         debugLog("ODEBRANO: {\n");
