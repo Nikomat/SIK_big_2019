@@ -70,6 +70,7 @@ int main(int argc, char *argv[]) {
     setMulticastEnabled(mcast_sock, &mcast_ip_mreq, MCAST_ADDR);
     bindToLocalAddress(NULL, mcast_sock, CMD_PORT);
 
+
     struct FileList file_list = initFileList();
     loadFilesFromDir(&file_list, SHRD_FLDR);
 
@@ -79,6 +80,8 @@ int main(int argc, char *argv[]) {
         struct sockaddr_in client_address;
         struct SIMPL_CMD* simple_cmd;
         struct CMPLX_CMD* cmplx_cmd;
+
+        debugLog("OCZEKUJE NA KOMENDE...");
         CommandE cmd = readCommand(mcast_sock, &client_address, &simple_cmd, &cmplx_cmd);
 
         debugLog("ODEBRANO: {\n");
