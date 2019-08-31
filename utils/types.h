@@ -7,7 +7,7 @@
 
 #include <stdint.h>
 
-#define MAX_UDP_SIZE 60
+#define MAX_UDP_SIZE 65507
 
 typedef enum {
     HELLO,

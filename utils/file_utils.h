@@ -8,7 +8,7 @@
 #include <netinet/in.h>
 
 // Wielkość fragmentu pliku, który jesteśmy gotowi załadować do pamięci
-#define FILE_PART_SIZE 5
+#define FILE_PART_SIZE 1024
 
 struct FileNode {
     struct FileNode* next;
