@@ -45,8 +45,9 @@ void setBrodacastEnabled(int sock) {
         syserr("setsockopt broadcast");
 }
 
-void setTTL(int sock, int ttl_value) {
-    if (setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, (void*)&ttl_value, sizeof ttl_value) < 0)
+void setTTL(int sock) {
+    int optval = TTL_VALUE;
+    if (setsockopt(sock, IPPROTO_IP, IP_MULTICAST_TTL, (void*)&optval, sizeof optval) < 0)
         syserr("setsockopt multicast ttl");
 }
 

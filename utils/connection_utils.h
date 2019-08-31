@@ -8,6 +8,8 @@
 #include "types.h"
 #include <netinet/in.h>
 
+#define TTL_VALUE     4
+
 
 /* otworzenie gniazda */
 extern int openSocket(Protocol a_protocol);
@@ -16,7 +18,7 @@ extern int openSocket(Protocol a_protocol);
 extern void setBrodacastEnabled(int sock);
 
 /* ustawienie Time To Live dla datagramów rozsyłanych do grupy */
-extern void setTTL(int sock, int ttl_value);
+extern void setTTL(int sock);
 
 /* zablokowanie rozsyłania grupowego do siebie */
 extern void setMulticastLoopDisabled(int sock);

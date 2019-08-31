@@ -7,7 +7,7 @@
 
 #include "types.h"
 
-#define DEBUG 1
+#define DEBUG 0
 
 /*
  * discover – po otrzymaniu tego polecenia klient powinien wypisać na standardowe wyjście listę wszystkich węzłów serwerowych dostępnych aktualnie w grupie.

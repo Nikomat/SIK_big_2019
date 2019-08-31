@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
 
     mcast_sock = openSocket(UDP);
     setBrodacastEnabled(mcast_sock);
-    //setTTL(mcast_sock, (int) TIMEOUT.tv_sec);
+    setTTL(mcast_sock);
     bindToLocalAddress(&local_addr, mcast_sock, 0);
     freeaddrinfo(getAddress(&mcast_sockadd_in, MCAST_ADDR, CMD_PORT_STR, UDP));
     //setMulticastLoopDisabled(mcast_sock);
@@ -358,7 +358,6 @@ void handleSearch(struct ConnectionData* connection_data, char* substring, struc
 
             if (e == MY_LIST && simpl_cmd->cmd_seq == connection_data->cmd_seq) {
                 castStringToFileList(list, simpl_cmd->data, &server_addr);
-                printFileList(list);
             } else {
                 printCmdError(server_addr, "Got unexpected command: %s", Command[e]);
             }
@@ -369,6 +368,7 @@ void handleSearch(struct ConnectionData* connection_data, char* substring, struc
         timersub(&loop_time, &start_time, &timeout_diff);
         timersub(&(connection_data->timeout), &timeout_diff, &timeout_left);
     }
+    printFileList(list);
 
 }
 
