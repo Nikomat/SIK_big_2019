@@ -164,9 +164,8 @@ void castStringToFileList(struct FileList* list, char* files, struct sockaddr_in
         if (file_len > 0) {
             addFile(list, files, -1, server);
         }
-
-        files = temp_files;
-        files = temp_files != NULL ? files + 1 : NULL;
+        
+        files = temp_files != NULL ? temp_files + 1 : NULL;
     }
 }
 

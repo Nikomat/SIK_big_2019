@@ -345,6 +345,10 @@ void handleSearch(struct ConnectionData* connection_data, char* substring, struc
 
     gettimeofday(&start_time, NULL);
 
+    if (!isFileListEmpty(list)) {
+        purgeFileList(list);
+    }
+
     while (timeout_left.tv_sec > 0 || (timeout_left.tv_sec == 0 && timeout_left.tv_usec > 0)) {
         setReceiveTimeout(connection_data->mcast_sock, timeout_left);
         CommandE e = readCommand(connection_data->mcast_sock, &server_addr, &simpl_cmd, &cmplx_cmd);
@@ -353,9 +357,6 @@ void handleSearch(struct ConnectionData* connection_data, char* substring, struc
             isComplex[e] ? printCmplxCmd(cmplx_cmd) : printSimplCmd(simpl_cmd);
 
             if (e == MY_LIST && simpl_cmd->cmd_seq == connection_data->cmd_seq) {
-                if (!isFileListEmpty(list)) {
-                    purgeFileList(list);
-                }
                 castStringToFileList(list, simpl_cmd->data, &server_addr);
                 printFileList(list);
             } else {
