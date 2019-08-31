@@ -32,9 +32,9 @@ client.o: client/main.c utils/args_utils.h utils/command_utils.h utils/connectio
 
 
 netstore-client: client.o err.o args_utils.o command_utils.o connection_utils.o file_utils.o user_input_output.o
-	$(CC) $(LFLAGS) -o netstore-client client.o err.o
+	$(CC) $(LFLAGS) -o netstore-client client.o err.o args_utils.o command_utils.o connection_utils.o file_utils.o user_input_output.o
 netstore-server: server.o err.o args_utils.o command_utils.o connection_utils.o file_utils.o user_input_output.o
-	$(CC) $(LFLAGS) -o netstore-server server.o err.o
+	$(CC) $(LFLAGS) -o netstore-server server.o err.o args_utils.o command_utils.o connection_utils.o file_utils.o user_input_output.o
 
 clean:
 	rm -f *.o $(TARGETS)
