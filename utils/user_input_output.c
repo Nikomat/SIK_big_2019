@@ -33,6 +33,14 @@ struct UserInput getUserInput() {
         if (strncicmp(Action[i], line_buf, strlen(Action[i])) == 0 && isspace(line_buf[strlen(Action[i])])) {
             userInput.action = i;
             userInput.arg = strTrim(line_buf + strlen(Action[i]));
+
+            // Sprawdzenie czy występuje prawidłowy argument dla tej akcji
+            if (strlen(userInput.arg) > 0 && isActionArgObligatory[i] == -1) {
+                userInput.action = UNKNOWN_ACTION;
+            }
+            if (strlen(userInput.arg) <= 0 && isActionArgObligatory[i] == 1) {
+                userInput.action = UNKNOWN_ACTION;
+            }
         }
     }
     return userInput;

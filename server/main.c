@@ -157,7 +157,7 @@ void handleAdd(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struc
             int tcp_sock = initFileListen(timeout);
             struct sockaddr_in local_address = getSockDetails(tcp_sock);
 
-            struct CMPLX_CMD* cmd = canAddCmd(cmd_seq, (uint64_t) local_address.sin_port, filename);
+            struct CMPLX_CMD* cmd = canAddCmd(cmd_seq, (uint64_t) local_address.sin_port, "");
             sendCmplxCmd(mcast_sock, cmd, addr);
             free(cmd);
 
@@ -221,9 +221,11 @@ void handleGet(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, struc
                 debugLog("[TCP] UDAŁO SIĘ NAWIĄZAĆ POŁĄCZENIE.\n");
                 debugLog("[TCP] ROZPOCZYNAM WYSYŁANIE PLIKU.\n");
 
-                sendFile(con_fd, filepath, filename);
-
-                debugLog("[TCP] WYSYŁANIE ZAKOŃCZONE, KOŃCZĘ POŁĄCZENIE.\n");
+                if (sendFile(con_fd, filepath, filename)) {
+                    debugLog("[TCP] WYSYŁANIE ZAKOŃCZONE SUKCESEM, KOŃCZĘ POŁĄCZENIE.\n");
+                } else {
+                    debugLog("[TCP] WYSYŁANIE ZAKOŃCZONE BŁĘDEM, KOŃCZĘ POŁĄCZENIE.\n");
+                }
 
                 if (close(con_fd) < 0)
                     syserr("close");

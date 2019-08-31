@@ -122,29 +122,27 @@ int isFileListEmpty(struct FileList* list) {
 
 char* castFileListToString(struct FileList* list, size_t max_size, char* substring) {
 
-    struct FileNode* node_iter = list->list;
     size_t str_len = 0;
     char* files_str = NULL;
 
-    while (node_iter != NULL && str_len < max_size) {
-        if (substring == NULL || (*substring) == '\0' || strstr(node_iter->filename, substring) != NULL) {
-            size_t file_str_len = strlen(node_iter->filename) + 1;
+    while (list->list != NULL && str_len < max_size) {
+        if (substring == NULL || (*substring) == '\0' || strstr(list->list->filename, substring) != NULL) {
+            size_t file_str_len = strlen(list->list->filename) + 1;
 
             if (str_len + file_str_len <= max_size) {
                 if (files_str == NULL) {
                     files_str = malloc(0);
                 }
                 files_str = realloc(files_str, (file_str_len + str_len) * sizeof(char));
-                memcpy(files_str + str_len, node_iter->filename, strlen(node_iter->filename));
+                memcpy(files_str + str_len, list->list->filename, strlen(list->list->filename));
                 str_len += file_str_len;
                 files_str[str_len - 1] = '\n';
             } else {
-
+                break;
             }
         }
 
-        list->list = node_iter->next; // tworzymy iterację po liście
-        node_iter = node_iter->next;
+        list->list = list->list->next; // tworzymy iterację po liście
     }
 
     if (files_str != NULL) {
@@ -186,9 +184,6 @@ FILE* getFile(char* filepath, char* filename, char* mode) {
     strcat(fullpath, filename);
 
     FILE* file = fopen(fullpath, mode);
-    if (file == NULL) {
-        syserr("fopen");
-    }
     return file;
 }
 

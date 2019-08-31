@@ -253,6 +253,9 @@ CommandE readCommand(int sock, struct sockaddr_in* sender_address, struct SIMPL_
 
 int sendFile(int socket, char* path, char* filename) {
     FILE* file = getFile(path, filename, "r");
+    if (file == NULL) {
+        return 0;
+    }
     char buffer[FILE_PART_SIZE];
     size_t len;
     while (0 < (len = fread(buffer, sizeof(char), FILE_PART_SIZE, file))) {

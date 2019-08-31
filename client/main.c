@@ -141,11 +141,11 @@ void executeFileSend(struct sockaddr_in server_addr, struct CMPLX_CMD* cmplx_cmd
 
     server_addr.sin_port = (in_port_t) cmplx_cmd->param;
     if (!connectToAddress(tcp_sock, server_addr)) {
-        printf("File %s uploading failed (%s:%lu) Server unavailable\n", cmplx_cmd->data, inet_ntoa(server_addr.sin_addr), cmplx_cmd->param);
+        printf("File %s uploading failed (%s:%lu) Server unavailable\n", filepath, inet_ntoa(server_addr.sin_addr), cmplx_cmd->param);
     } else if (!sendFile(tcp_sock, "", filepath)) {
-        printf("File %s uploading failed (%s:%lu) Connection dropped\n", cmplx_cmd->data, inet_ntoa(server_addr.sin_addr), cmplx_cmd->param);
+        printf("File %s uploading failed (%s:%lu) Connection dropped\n", filepath, inet_ntoa(server_addr.sin_addr), cmplx_cmd->param);
     } else {
-        printf("File {%s} uploaded (%s:%lu)\n", cmplx_cmd->data, inet_ntoa(server_addr.sin_addr), cmplx_cmd->param);
+        printf("File {%s} uploaded (%s:%lu)\n", filepath, inet_ntoa(server_addr.sin_addr), cmplx_cmd->param);
     }
     close(tcp_sock);
 }

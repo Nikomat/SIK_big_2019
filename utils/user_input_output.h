@@ -37,6 +37,8 @@ struct UserInput {
 
 const static char* Action[ACTION_ENUM_SIZE] = {"discover", "search", "fetch", "upload", "remove", "exit"};
 
+const static int isActionArgObligatory[ACTION_ENUM_SIZE] = {-1, 0, 1, 1, 1, -1};
+
 extern struct UserInput getUserInput();
 
 extern void printCmdError(struct sockaddr_in address, const char *__restrict __format, ...);
