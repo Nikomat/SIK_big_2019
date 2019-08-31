@@ -175,7 +175,6 @@ void sendSimplCmd(int sock, struct SIMPL_CMD* cmd, struct sockaddr_in* addr) {
     if (addr == NULL) { // DEPRECATED
         write(sock, (char *) cmd, cmd_size);
     } else {
-
         socklen_t snda_len = (socklen_t) sizeof(*addr);
 
         int flags = 0;
@@ -200,8 +199,6 @@ void sendCmplxCmd(int sock, struct CMPLX_CMD* cmd, struct sockaddr_in* addr) {
     if (addr == NULL) { // DEPRECATED
         write(sock, (char *) cmd, cmd_size);
     } else {
-
-
         socklen_t snda_len = (socklen_t) sizeof(*addr);
 
         int flags = 0;

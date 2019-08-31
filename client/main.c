@@ -79,7 +79,7 @@ int main(int argc, char *argv[]) {
 
     mcast_sock = openSocket(UDP);
     setBrodacastEnabled(mcast_sock);
-    setTTL(mcast_sock, (int) TIMEOUT.tv_sec);
+    //setTTL(mcast_sock, (int) TIMEOUT.tv_sec);
     bindToLocalAddress(&local_addr, mcast_sock, 0);
     freeaddrinfo(getAddress(&mcast_sockadd_in, MCAST_ADDR, CMD_PORT_STR, UDP));
     //setMulticastLoopDisabled(mcast_sock);
