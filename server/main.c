@@ -17,7 +17,7 @@
 static volatile int stop = 0;
 static jmp_buf buf;
 
-// Oczekujemy na zakończenie obsługi ostatniego klienta
+// Oczekujemy na zakończenie obsługi klientów
 void gracefulStop(int sig) {
     stop = 1;
 }
@@ -91,6 +91,7 @@ int main(int argc, char *argv[]) {
 
     // Zapisujemy sobie miejsce do którego chcemy skoczyć na koniec działania aplikacji
     setjmp(buf);
+    signal(SIGINT, forceStop);
 
     /* czytanie tego, co odebrano */
     while (!stop) {
@@ -137,11 +138,12 @@ int main(int argc, char *argv[]) {
                 }
                 break;
         }
+
         signal(SIGINT, forceStop);
     }
 
     debugLog("KOŃCZĘ SERWER.\n");
-    
+
     purgeFileList(&file_list);
     setMulticastDisabled(mcast_sock, &mcast_ip_mreq);
 }
