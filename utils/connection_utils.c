@@ -147,7 +147,7 @@ void setMulticastEnabled(int sock, struct ip_mreq *ip_mreq, char *multicast_dott
 }
 
 void setMulticastDisabled(int sock, struct ip_mreq *ip_mreq) {
-    if (setsockopt(sock, IPPROTO_IP, IP_DROP_MEMBERSHIP, (void *) &ip_mreq, sizeof ip_mreq) < 0)
+    if (setsockopt(sock, IPPROTO_IP, IP_DROP_MEMBERSHIP, (void *) ip_mreq, sizeof (*ip_mreq)) < 0)
         syserr("setsockopt disconnect from multicast");
 }
 
