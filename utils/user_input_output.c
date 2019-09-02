@@ -72,7 +72,7 @@ char* strTrim(char* str) {
 }
 
 void printCmdError(struct sockaddr_in address, const char *__restrict __format, ...) {
-    printf("[PCKG ERROR] Skipping invalid package from {%s}:{%d}. ", inet_ntoa(address.sin_addr), address.sin_port);
+    printf("[PCKG ERROR] Skipping invalid package from %s:%d. ", inet_ntoa(address.sin_addr), address.sin_port);
     va_list args;
     va_start(args, __format);
     vprintf(__format, args);

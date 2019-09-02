@@ -225,7 +225,7 @@ void handleUpload(struct ConnectionData* connection_data, char* filepath) {
                             break;
                         }
                     } else if (e == NO_WAY && simpl_cmd->cmd_seq == connection_data->cmd_seq) {
-                        printf("File %s uploading failed (%s:%lu) Server rejected a file\n", filepath, inet_ntoa(server_addr.sin_addr), cmplx_cmd->param);
+                        printf("File %s uploading failed (%s:%hu) Server rejected a file\n", filepath, inet_ntoa(server_addr.sin_addr), server_addr.sin_port);
                         free(isComplex[e] ? (void *) cmplx_cmd : (void *) simpl_cmd);
                         break;
                     } else {
