@@ -10,6 +10,15 @@
 
 #define TTL_VALUE     4
 
+struct HostNode {
+    struct HostNode* next;
+    struct sockaddr_in host;
+    uint64_t free_space;
+};
+
+struct HostList {
+    struct HostNode* list;
+};
 
 /* otworzenie gniazda */
 extern int openSocket(Protocol a_protocol);
@@ -58,5 +67,13 @@ extern void setReceiveTimeoutZero(int sock);
 extern int sendFile(int socket, char* path, char* filename);
 
 extern int receiveFile(int socket, char* path, char* filename);
+
+extern struct HostList initHostList();
+
+extern int isHostListEmpty(struct HostList* list);
+
+extern void addHost(struct HostList* list, struct sockaddr_in addr, uint64_t size);
+
+extern struct sockaddr_in getHost(struct HostList* list, uint64_t* free_space);
 
 #endif //CONNECTION_UTILS_H

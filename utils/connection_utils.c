@@ -287,3 +287,45 @@ int receiveFile(int socket, char* path, char* filename) {
         return 1;
     }
 }
+
+struct HostList initHostList() {
+    struct HostList list;
+    list.list = NULL;
+    return list;
+}
+
+int isHostListEmpty(struct HostList* list) {
+    return list->list == NULL;
+}
+
+void addHost(struct HostList* list, struct sockaddr_in addr, uint64_t size) {
+    struct HostNode* iter = list->list;
+    struct HostNode* last = NULL;
+
+    struct HostNode* new_node = malloc(sizeof(struct HostNode));
+    new_node->free_space = size;
+    new_node->host = addr;
+
+    while (iter != NULL && iter->free_space > new_node->free_space) {
+        last = iter;
+        iter = iter->next;
+    }
+    if (last != NULL) {
+        last->next = new_node;
+    } else {
+        list->list = new_node;
+    }
+    new_node->next = iter;
+}
+
+struct sockaddr_in getHost(struct HostList* list, uint64_t* free_space) {
+    struct sockaddr_in addr;
+    if (!isHostListEmpty(list)) {
+        addr = list->list->host;
+        struct HostNode* old_node = list->list;
+        list->list = old_node->next;
+        *free_space = old_node->free_space;
+        free(old_node);
+    }
+    return addr;
+}

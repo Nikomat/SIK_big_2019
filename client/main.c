@@ -169,9 +169,8 @@ void handleUpload(struct ConnectionData* connection_data, char* filepath) {
         struct timeval timeout_diff;
         struct timeval timeout_left = connection_data->timeout;
 
-        struct sockaddr_in best_server_addr;
         int64_t best_server_free_space = 0;
-
+        struct HostList host_list = initHostList();
 
         gettimeofday(&start_time, NULL);
 
@@ -185,8 +184,8 @@ void handleUpload(struct ConnectionData* connection_data, char* filepath) {
                 if (e == GOOD_DAY && cmplx_cmd->cmd_seq == connection_data->cmd_seq) {
                     if (cmplx_cmd->param > best_server_free_space) {
                         best_server_free_space = cmplx_cmd->param;
-                        best_server_addr = server_addr;
                     }
+                    addHost(&host_list, server_addr, cmplx_cmd->param);
                 } else {
                     printCmdError(server_addr, "Got unexpected command: %s", Command[e]);
                 }
@@ -200,46 +199,55 @@ void handleUpload(struct ConnectionData* connection_data, char* filepath) {
         setReceiveTimeoutZero(connection_data->mcast_sock);
 
         if (best_server_free_space >= file_size) {
-            connection_data->cmd_seq++;
+            while (!isHostListEmpty(&host_list)) {
 
-            timeout_left = connection_data->timeout;
-            gettimeofday(&start_time, NULL);
+                uint64_t server_free_space;
+                struct sockaddr_in best_server_addr = getHost(&host_list, &server_free_space);
 
-            struct CMPLX_CMD* add_cmd = addCmd(connection_data->cmd_seq, file_size, getFileNameFromPath(filepath));
-            sendCmplxCmd(connection_data->mcast_sock, add_cmd, &best_server_addr);
-            free(add_cmd);
+                if (server_free_space >= file_size) {
+                    connection_data->cmd_seq++;
 
-            while (timeout_left.tv_sec > 0 || (timeout_left.tv_sec == 0 && timeout_left.tv_usec > 0)) {
-                setReceiveTimeout(connection_data->mcast_sock, timeout_left);
-                CommandE e = readCommand(connection_data->mcast_sock, &server_addr, &simpl_cmd, &cmplx_cmd);
+                    timeout_left = connection_data->timeout;
+                    gettimeofday(&start_time, NULL);
 
-                if (e != NO_CMD) {
-                    isComplex[e] ? printCmplxCmd(cmplx_cmd) : printSimplCmd(simpl_cmd);
+                    struct CMPLX_CMD *add_cmd = addCmd(connection_data->cmd_seq, file_size,
+                                                       getFileNameFromPath(filepath));
+                    sendCmplxCmd(connection_data->mcast_sock, add_cmd, &best_server_addr);
+                    free(add_cmd);
 
-                    if (e == CAN_ADD && cmplx_cmd->cmd_seq == connection_data->cmd_seq) {
-                        if (fork() == 0) {
-                            executeFileSend(server_addr, cmplx_cmd, filepath); // Potencjalne przechwycenie pliku
+                    while (timeout_left.tv_sec > 0 || (timeout_left.tv_sec == 0 && timeout_left.tv_usec > 0)) {
+                        setReceiveTimeout(connection_data->mcast_sock, timeout_left);
+                        CommandE e = readCommand(connection_data->mcast_sock, &server_addr, &simpl_cmd, &cmplx_cmd);
+
+                        if (e != NO_CMD) {
+                            isComplex[e] ? printCmplxCmd(cmplx_cmd) : printSimplCmd(simpl_cmd);
+
+                            if (e == CAN_ADD && cmplx_cmd->cmd_seq == connection_data->cmd_seq) {
+                                if (fork() == 0) {
+                                    executeFileSend(server_addr, cmplx_cmd, filepath);
+                                    free(isComplex[e] ? (void *) cmplx_cmd : (void *) simpl_cmd);
+                                    exit(0);
+                                } else {
+                                    break;
+                                }
+                            } else if (e == NO_WAY && simpl_cmd->cmd_seq == connection_data->cmd_seq) {
+                                printf("File %s uploading failed (%s:%hu) Server rejected a file\n", filepath,
+                                       inet_ntoa(server_addr.sin_addr), server_addr.sin_port);
+                                free(isComplex[e] ? (void *) cmplx_cmd : (void *) simpl_cmd);
+                                break;
+                            } else {
+                                printCmdError(server_addr, "Got unexpected command: %s", Command[e]);
+                            }
                             free(isComplex[e] ? (void *) cmplx_cmd : (void *) simpl_cmd);
-                            exit(0);
-                        } else {
-                            break;
                         }
-                    } else if (e == NO_WAY && simpl_cmd->cmd_seq == connection_data->cmd_seq) {
-                        printf("File %s uploading failed (%s:%hu) Server rejected a file\n", filepath, inet_ntoa(server_addr.sin_addr), server_addr.sin_port);
-                        free(isComplex[e] ? (void *) cmplx_cmd : (void *) simpl_cmd);
-                        break;
-                    } else {
-                        printCmdError(server_addr, "Got unexpected command: %s", Command[e]);
+
+                        gettimeofday(&loop_time, NULL);
+                        timersub(&loop_time, &start_time, &timeout_diff);
+                        timersub(&connection_data->timeout, &timeout_diff, &timeout_left);
                     }
-                    free(isComplex[e] ? (void *) cmplx_cmd : (void *) simpl_cmd);
+                    setReceiveTimeoutZero(connection_data->mcast_sock);
                 }
-
-                gettimeofday(&loop_time, NULL);
-                timersub(&loop_time, &start_time, &timeout_diff);
-                timersub(&connection_data->timeout, &timeout_diff, &timeout_left);
             }
-            setReceiveTimeoutZero(connection_data->mcast_sock);
-
         } else {
             printf("File %s too big", filepath);
         }
