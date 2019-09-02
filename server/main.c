@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <arpa/inet.h>
 #include <string.h>
+#include <signal.h>
+#include <setjmp.h>
+
 #include "../utils/err.h"
 #include "../utils/types.h"
 #include "../utils/connection_utils.h"
@@ -10,6 +13,20 @@
 #include "../utils/command_utils.h"
 #include "../utils/user_input_output.h"
 #include "../utils/file_utils.h"
+
+static volatile int stop = 0;
+static jmp_buf buf;
+
+// Oczekujemy na zakończenie obsługi ostatniego klienta
+void gracefulStop(int sig) {
+    stop = 1;
+}
+
+// Uciekamy z głównej pętli
+void forceStop(int sig) {
+    stop = 1;
+    longjmp(buf, 0);
+}
 
 void handleHello(uint64_t cmd_seq, int mcast_sock, struct sockaddr_in* addr, char* mcast_addr, int64_t free_space);
 
@@ -63,26 +80,28 @@ int main(int argc, char *argv[]) {
         }
     }
 
-
     int mcast_sock = openSocket(UDP);
     struct ip_mreq mcast_ip_mreq;
 
     setMulticastEnabled(mcast_sock, &mcast_ip_mreq, MCAST_ADDR);
     bindToLocalAddress(NULL, mcast_sock, CMD_PORT);
 
-
     struct FileList file_list = initFileList();
     loadFilesFromDir(&file_list, SHRD_FLDR);
 
-    /* czytanie tego, co odebrano */
-    for (;;) {
+    // Zapisujemy sobie miejsce do którego chcemy skoczyć na koniec działania aplikacji
+    setjmp(buf);
 
+    /* czytanie tego, co odebrano */
+    while (!stop) {
         struct sockaddr_in client_address;
         struct SIMPL_CMD* simple_cmd;
         struct CMPLX_CMD* cmplx_cmd;
 
         debugLog("OCZEKUJE NA KOMENDE...\n");
+
         CommandE cmd = readCommand(mcast_sock, &client_address, &simple_cmd, &cmplx_cmd);
+        signal(SIGINT, gracefulStop);
 
         debugLog("ODEBRANO: {\n");
         isComplex[cmd] ? printCmplxCmd(cmplx_cmd) : printSimplCmd(simple_cmd);
@@ -118,11 +137,13 @@ int main(int argc, char *argv[]) {
                 }
                 break;
         }
+        signal(SIGINT, forceStop);
     }
 
+    debugLog("KOŃCZĘ SERWER.\n");
+    
     purgeFileList(&file_list);
-    //setMulticastDisabled(mcast_sock, &mcast_ip_mreq);
-
+    setMulticastDisabled(mcast_sock, &mcast_ip_mreq);
 }
 
 int initFileListen(struct timeval timeout) {
