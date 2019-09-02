@@ -138,10 +138,11 @@ struct addrinfo* getAddress(struct sockaddr_in* address, char host[], char port[
 }
 
 void setMulticastEnabled(int sock, struct ip_mreq *ip_mreq, char *multicast_dotted_address) {
-    ip_mreq->imr_interface.s_addr = htonl(INADDR_ANY);
-    if (inet_aton(multicast_dotted_address, &(ip_mreq->imr_multiaddr)) == 0)
-        syserr("inet_aton");
-    if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (void *) ip_mreq, sizeof (*ip_mreq)) < 0)
+    ip_mreq->imr_multiaddr.s_addr = inet_addr(multicast_dotted_address);
+    ip_mreq->imr_interface.s_addr = htonl(INADDR_ANY); // Wydaje mi się, że to może nie zadziałać dla kilku interfejsów
+   // if (inet_aton(multicast_dotted_address, &(ip_mreq->imr_multiaddr)) == 0)
+   //     syserr("inet_aton");
+    if (setsockopt(sock, IPPROTO_IP, IP_ADD_MEMBERSHIP, (char *) ip_mreq, sizeof (*ip_mreq)) < 0)
         syserr("setsockopt connect to multicast");
 }
 
