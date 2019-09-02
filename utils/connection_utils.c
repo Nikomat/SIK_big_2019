@@ -26,9 +26,9 @@ int openSocket(Protocol protocol) {
     int sock;
 
     if (protocol == UDP) {
-        sock = socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
+        sock = socket(AF_INET, SOCK_DGRAM, 0);
     } else if (protocol == TCP) {
-        sock = socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
+        sock = socket(AF_INET, SOCK_STREAM, 0);
     } else {
         syserr("new socket protocol");
         sock = -1;
