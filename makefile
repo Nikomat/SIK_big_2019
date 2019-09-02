@@ -1,5 +1,5 @@
 CC = gcc
-STD = c11
+STD = gnu11 #Potrzebuje obslugi POSIX'a, a zadna flaga zdawala sie nie dzialac
 CFLAGS = -Wall -Wextra -O2
 TARGETS = netstore-client netstore-server
 
@@ -34,6 +34,7 @@ client.o: client/main.c utils/args_utils.h utils/command_utils.h utils/connectio
 
 netstore-client: client.o err.o args_utils.o command_utils.o connection_utils.o file_utils.o user_input_output.o
 	$(CC) -std=$(STD) $(LFLAGS) -o netstore-client client.o err.o args_utils.o command_utils.o connection_utils.o file_utils.o user_input_output.o
+
 netstore-server: server.o err.o args_utils.o command_utils.o connection_utils.o file_utils.o user_input_output.o
 	$(CC) -std=$(STD) $(LFLAGS) -o netstore-server server.o err.o args_utils.o command_utils.o connection_utils.o file_utils.o user_input_output.o
 
