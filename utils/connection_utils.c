@@ -2,23 +2,7 @@
 // Created by nikodem on 20.07.19.
 //
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
-#include <unistd.h>
-#include <arpa/inet.h>
-#include <netinet/in.h>
-#include <sys/types.h>
-#include <sys/socket.h>
-#include <netdb.h>
-#include <errno.h>
-
 #include "connection_utils.h"
-#include "types.h"
-#include "err.h"
-#include "command_utils.h"
-#include "user_input_output.h"
-#include "file_utils.h"
 
 #define MAX_TCP_LISTEN_QUEUE_LEN 1
 

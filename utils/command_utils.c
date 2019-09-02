@@ -2,12 +2,7 @@
 // Created by nikodem on 26.07.19.
 //
 
-#include <string.h>
-#include <zconf.h>
-#include <stdio.h>
-#include <stdlib.h>
 #include "command_utils.h"
-#include "err.h"
 
 CommandE getCommand(char* string) {
     CommandE cmd = UNKNOWN_CMD;

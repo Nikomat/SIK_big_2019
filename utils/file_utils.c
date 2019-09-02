@@ -2,17 +2,7 @@
 // Created by nikodem on 31.07.19.
 //
 
-#include <dirent.h>
-#include <stdlib.h>
-#include <string.h>
-#include <sys/stat.h>
-#include <arpa/inet.h>
-#include <stdio.h>
-#include <zconf.h>
 #include "file_utils.h"
-#include "err.h"
-#include "user_input_output.h"
-
 
 struct FileList initFileList() {
     struct FileList list;

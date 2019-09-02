@@ -5,8 +5,22 @@
 #ifndef CONNECTION_UTILS_H
 #define CONNECTION_UTILS_H
 
-#include "types.h"
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <unistd.h>
+#include <arpa/inet.h>
 #include <netinet/in.h>
+#include <sys/types.h>
+#include <sys/socket.h>
+#include <netdb.h>
+#include <errno.h>
+
+#include "types.h"
+#include "err.h"
+#include "command_utils.h"
+#include "user_input_output.h"
+#include "file_utils.h"
 
 #define TTL_VALUE     4
 

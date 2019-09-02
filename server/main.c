@@ -5,6 +5,10 @@
 #include <string.h>
 #include <signal.h>
 #include <setjmp.h>
+#include <unistd.h>
+#include <netinet/in.h>
+#include <sys/types.h>
+#include <sys/socket.h>
 
 #include "../utils/err.h"
 #include "../utils/types.h"

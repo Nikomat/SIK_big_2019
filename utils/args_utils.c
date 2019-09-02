@@ -2,9 +2,7 @@
 // Created by nikodem on 27.07.19.
 //
 
-#include <string.h>
 #include "args_utils.h"
-#include "err.h"
 
 char* findArg(char* flag, int argc, char *argv[]) {
     for (int i = 0; i<argc; i++) {

@@ -6,6 +6,16 @@
 #define FILE_UTILS_H
 
 #include <netinet/in.h>
+#include <dirent.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/stat.h>
+#include <arpa/inet.h>
+#include <stdio.h>
+#include <zconf.h>
+
+#include "err.h"
+#include "user_input_output.h"
 
 // Wielkość fragmentu pliku, który jesteśmy gotowi załadować do pamięci
 #define FILE_PART_SIZE 1024

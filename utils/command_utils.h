@@ -5,7 +5,13 @@
 #ifndef COMMAND_UTILS_H
 #define COMMAND_UTILS_H
 
+#include <string.h>
+#include <zconf.h>
+#include <stdio.h>
+#include <stdlib.h>
+
 #include "types.h"
+#include "err.h"
 
 extern CommandE getCommand(char* string);
 

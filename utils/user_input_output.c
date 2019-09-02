@@ -2,15 +2,7 @@
 // Created by nikodem on 28.07.19.
 //
 
-#include <stdio.h>
-#include <string.h>
-#include <ctype.h>
-#include <zconf.h>
-#include <rpc/types.h>
-#include <arpa/inet.h>
-
 #include "user_input_output.h"
-#include "command_utils.h"
 
 int strncicmp(char const *a, char const *b, size_t __n);
 

@@ -5,7 +5,15 @@
 #ifndef USER_INPUT_H
 #define USER_INPUT_H
 
+#include <stdio.h>
+#include <string.h>
+#include <ctype.h>
+#include <zconf.h>
+#include <rpc/types.h>
+#include <arpa/inet.h>
+
 #include "types.h"
+#include "command_utils.h"
 
 #define DEBUG 0
 
