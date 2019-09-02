@@ -228,6 +228,11 @@ void handleUpload(struct ConnectionData* connection_data, char* filepath) {
                                     free(isComplex[e] ? (void *) cmplx_cmd : (void *) simpl_cmd);
                                     exit(0);
                                 } else {
+                                    while (!isHostListEmpty(&host_list)) {
+                                        // Kończymy ten cyrk
+                                        uint64_t temp;
+                                        getHost(&host_list, &temp);
+                                    }
                                     break;
                                 }
                             } else if (e == NO_WAY && simpl_cmd->cmd_seq == connection_data->cmd_seq) {
